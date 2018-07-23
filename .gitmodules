@@ -1,0 +1,6 @@
+[submodule "vendor/github.com/libvirt/libvirt-go"]
+	path = vendor/github.com/libvirt/libvirt-go
+	url = https://github.com/libvirt/libvirt-go.git
+[submodule "vendor/github.com/urfave/cli"]
+	path = vendor/github.com/urfave/cli
+	url = https://github.com/urfave/cli.git
