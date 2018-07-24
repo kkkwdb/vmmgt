@@ -41,6 +41,7 @@ func list_vm(c *cli.Context) {
 
 	vcpus := make(map[string]uint)
 	memories := make(map[string]uint64)
+	disks := make(map[string]uint64)
 	states := make(map[string]int)
 	orderdNames := make([]string, 0)
 	for _, dom := range doms {
@@ -61,8 +62,13 @@ func list_vm(c *cli.Context) {
 				if err != nil {
 					log.Fatal(err)
 				}
-				memories[name] = di.Memory
+				memories[name] = di.Memory / 1024
 				vcpus[name] = di.NrVirtCpu
+				bi, err := dom.GetBlockInfo("/opt/libvirt/disks/"+name+".img", 0)
+				if err != nil {
+					log.Fatal(err)
+				}
+				disks[name] = bi.Capacity / 1024 / 1024 / 1024
 			}
 		}
 
@@ -72,9 +78,9 @@ func list_vm(c *cli.Context) {
 	sort.Slice(orderdNames, func(i, j int) bool { return states[orderdNames[i]] < states[orderdNames[j]] })
 
 	if verbose {
-		fmt.Printf("%-8s\t%s\t%s\t%s\n", "name", "state", "cpu", "memory")
+		fmt.Printf("%-8s\t%-8s\t%-8s\t%-8s\t%-8s\n", "name", "state", "cpu", "memory(M)", "disk(G)")
 		for _, name := range orderdNames {
-			fmt.Printf("%-8s\t%s\t%d\t%d\n", name, stateTable[states[name]], vcpus[name], memories[name])
+			fmt.Printf("%-8s\t%-8s\t%-8d\t%-8d\t%-8d\n", name, stateTable[states[name]], vcpus[name], memories[name], disks[name])
 		}
 		return
 	}

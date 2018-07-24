@@ -5,6 +5,7 @@ import (
 	"github.com/libvirt/libvirt-go"
 	"github.com/urfave/cli"
 	"log"
+	"os"
 )
 
 var deleteCmd = cli.Command{
@@ -53,6 +54,7 @@ func deleteVm(c *cli.Context) error {
 		if err != nil {
 			log.Fatal(err)
 		}
+		os.Remove("/opt/libvirt/disks/" + delname + ".img")
 	}
 	fmt.Println("delete vm", c.GlobalStringSlice("name"))
 	return nil

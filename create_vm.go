@@ -14,6 +14,23 @@ var createCmd = cli.Command{
 	Usage:   "create a virtual machine",
 	Before:  createCheck,
 	Action:  createVm,
+	Flags: []cli.Flag{
+		cli.StringFlag{
+			Name:  "cpu,c",
+			Usage: "Cpu number for vm",
+			Value: "8",
+		},
+		cli.StringFlag{
+			Name:  "memory,m",
+			Usage: "memory for vm",
+			Value: "8192",
+		},
+		cli.StringFlag{
+			Name:  "disk,d",
+			Usage: "disk capability for vm",
+			Value: "100",
+		},
+	},
 }
 
 func createCheck(c *cli.Context) error {
@@ -42,15 +59,15 @@ func createCheck(c *cli.Context) error {
 
 func createVm(c *cli.Context) {
 	name := c.GlobalStringSlice("name")[0]
-	disk := fmt.Sprintf("path=/opt/libvirt/disks/%s.img,size=100", name)
+	disk := fmt.Sprintf("path=/opt/libvirt/disks/%s.img,size=%s", name, c.String("disk"))
 	cmd := exec.Command("virt-install",
 		"--name", name,
-		"--memory", "8192",
+		"--memory", c.String("memory"),
 		"--disk", disk,
 		"--graphics", "vnc,listen=0.0.0.0",
 		"--sound", "default",
 		"--boot", "hd,cdrom",
-		"--vcpus", "8",
+		"--vcpus", c.String("cpu"),
 		"--noautoconsole",
 		"--serial", "pty",
 		"--console", "pty,target_type=serial",
