@@ -11,7 +11,7 @@ go get https://github.com/kkkwdb/vmmgt.git
 vmmgt -h
 
 ## create
-vmmgt -name new create -cpu 12 -memory 4096M -disk 50G
+vmmgt -name new create -cpu 12 -memory 4096 -disk 50
 
 ## list
 vmmgt list -v
