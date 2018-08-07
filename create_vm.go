@@ -72,6 +72,7 @@ func createVm(c *cli.Context) {
 		"--serial", "pty",
 		"--console", "pty,target_type=serial",
 		"--network", "network=default,model=virtio",
+		"--network", "network=data-net,model=virtio",
 		"--os-type", "linux",
 		"--os-variant", "rhel7",
 		"--pxe")
