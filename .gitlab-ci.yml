@@ -1,0 +1,33 @@
+# This file is a template, and might need editing before it works on your project.
+image: 10.0.24.42/centos/golang
+
+variables:
+  GOPATH: /go
+  REPO_NAME: vmmgt
+  REPO_DIR: 10.0.24.42/wangdb
+
+
+before_script:
+  - mkdir -p $GOPATH/src/$REPO_DIR
+  - ln -svf $CI_PROJECT_DIR $GOPATH/src/$REPO_DIR/$REPO_NAME
+  - cd $GOPATH/src/$REPO_DIR/$REPO_NAME
+  - git submodule init
+  - git submodule update
+
+stages:
+    - test
+    - build
+
+format:
+    stage: test
+    script:
+      - go fmt $(go list ./... | grep -v /vendor/)
+ 
+
+compile:
+    stage: build
+    script:
+      - go build -v
+    artifacts:
+      paths:
+        - vmmgt
