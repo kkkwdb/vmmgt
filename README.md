@@ -5,7 +5,7 @@ A tool to manage virtual machines, including create/delete/list tools.
 libvirt-devel virt-install
 
 ## install
-go get https://github.com/kkkwdb/vmmgt.git
+go get https://github.com/secawa/vmmgt.git
 
 ## help
 vmmgt -h
