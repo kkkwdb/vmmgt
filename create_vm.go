@@ -57,9 +57,23 @@ func createCheck(c *cli.Context) error {
 	return nil
 }
 
+func getDiskHome() string {
+	diskhome := "/home/libvirt"
+	f, err := os.Open(diskhome)
+	if err != nil {
+		diskhome = "/opt/libvirt"
+	}
+	defer f.Close()
+	if err := os.Mkdir(diskhome+"/disks", 0770); err != nil && os.IsNotExist(err) {
+		log.Fatal(err)
+	}
+	return diskhome + "/disks"
+}
+
 func createVm(c *cli.Context) {
 	name := c.GlobalStringSlice("name")[0]
-	disk := fmt.Sprintf("path=/opt/libvirt/disks/%s.img,size=%s", name, c.String("disk"))
+	diskhome := getDiskHome()
+	disk := fmt.Sprintf("path=%s/%s.img,size=%s", diskhome, name, c.String("disk"))
 	cmd := exec.Command("virt-install",
 		"--name", name,
 		"--memory", c.String("memory"),
@@ -72,6 +86,7 @@ func createVm(c *cli.Context) {
 		"--serial", "pty",
 		"--console", "pty,target_type=serial",
 		"--network", "network=default,model=virtio",
+		"--network", "network=data-net,model=virtio",
 		"--os-type", "linux",
 		"--os-variant", "rhel7",
 		"--pxe")
