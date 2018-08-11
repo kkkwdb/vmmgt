@@ -64,7 +64,7 @@ func getDiskHome() string {
 		diskhome = "/opt/libvirt"
 	}
 	defer f.Close()
-	if err := os.Mkdir(diskhome+"/disks", 0770); err != nil && os.IsNotExist(err) {
+	if err := os.Mkdir(diskhome+"/disks", 0770); err != nil && !os.IsExist(err) {
 		log.Fatal(err)
 	}
 	return diskhome + "/disks"
