@@ -54,7 +54,7 @@ func deleteVm(c *cli.Context) error {
 		if err != nil {
 			log.Fatal(err)
 		}
-		os.Remove(getDiskHome() + delname + ".img")
+		os.Remove(getDiskHome() + "/" + delname + ".img")
 	}
 	fmt.Println("delete vm", c.GlobalStringSlice("name"))
 	return nil
