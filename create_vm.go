@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 	"os/exec"
+	"strconv"
 )
 
 var createCmd = cli.Command{
@@ -29,6 +30,10 @@ var createCmd = cli.Command{
 			Name:  "disk,d",
 			Usage: "disk capability for vm",
 			Value: "100",
+		},
+		cli.StringFlag{
+			Name:  "macTail",
+			Usage: "the mac byte",
 		},
 	},
 }
@@ -72,8 +77,22 @@ func getDiskHome() string {
 
 func createVm(c *cli.Context) {
 	name := c.GlobalStringSlice("name")[0]
+
 	diskhome := getDiskHome()
 	disk := fmt.Sprintf("path=%s/%s.img,size=%s", diskhome, name, c.String("disk"))
+
+	mac1 := ""
+	mac2 := ""
+	macTail := c.String("macTail")
+	if macTail != "" {
+		_, err := strconv.ParseUint(macTail, 16, 8)
+		if err != nil {
+			log.Fatal(err)
+		}
+		mac1 = ",mac=52:54:00:51:01:" + macTail
+		mac2 = ",mac=52:54:00:51:02:" + macTail
+	}
+
 	cmd := exec.Command("virt-install",
 		"--name", name,
 		"--memory", c.String("memory"),
@@ -85,8 +104,8 @@ func createVm(c *cli.Context) {
 		"--noautoconsole",
 		"--serial", "pty",
 		"--console", "pty,target_type=serial",
-		"--network", "network=default,model=virtio",
-		"--network", "network=data-net,model=virtio",
+		"--network", "network=mgt-net,model=virtio"+mac1,
+		"--network", "network=data-net,model=virtio"+mac2,
 		"--os-type", "linux",
 		"--os-variant", "rhel7",
 		"--pxe")
