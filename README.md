@@ -17,10 +17,10 @@ go build
 ./vmmgt -h
 
 ## create
-./vmmgt -name new create -cpu 12 -memory 4096 -disk 50
+./vmmgt create -name new -cpu 12 -memory 4096 -disk 50
 
 ## list
 ./vmmgt list -v
 
 ## delete
-./vmmgt -n new delete
+./vmmgt delete -n new

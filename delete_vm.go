@@ -14,10 +14,16 @@ var deleteCmd = cli.Command{
 	Usage:   "delete a virtual machine",
 	Before:  deleteCheck,
 	Action:  deleteVm,
+	Flags: []cli.Flag{
+		cli.StringSliceFlag{
+			Name:  "name,n",
+			Usage: "Virtual machine's name",
+		},
+	},
 }
 
 func deleteCheck(c *cli.Context) error {
-	delnames := c.GlobalStringSlice("name")
+	delnames := c.StringSlice("name")
 	if len(delnames) == 0 {
 		log.Fatal("name is empty")
 	}
@@ -33,7 +39,7 @@ func deleteCheck(c *cli.Context) error {
 }
 
 func deleteVm(c *cli.Context) error {
-	delnames := c.GlobalStringSlice("name")
+	delnames := c.StringSlice("name")
 	for _, delname := range delnames {
 		dom, err := virtConn.LookupDomainByName(delname)
 		if err != nil {
@@ -56,6 +62,6 @@ func deleteVm(c *cli.Context) error {
 		}
 		os.Remove(getDiskHome() + "/" + delname + ".img")
 	}
-	fmt.Println("delete vm", c.GlobalStringSlice("name"))
+	fmt.Println("delete vm", c.StringSlice("name"))
 	return nil
 }

@@ -16,6 +16,10 @@ var createCmd = cli.Command{
 	Before:  createCheck,
 	Action:  createVm,
 	Flags: []cli.Flag{
+		cli.StringSliceFlag{
+			Name:  "name,n",
+			Usage: "Virtual machine's names '-n vm1,vm2'",
+		},
 		cli.StringFlag{
 			Name:  "cpu,c",
 			Usage: "Cpu number for vm",
@@ -39,7 +43,7 @@ var createCmd = cli.Command{
 }
 
 func createCheck(c *cli.Context) error {
-	names := c.GlobalStringSlice("name")
+	names := c.StringSlice("name")
 	if len(names) == 0 {
 		log.Fatal("name is empty")
 	}
@@ -76,7 +80,7 @@ func getDiskHome() string {
 }
 
 func createVm(c *cli.Context) {
-	name := c.GlobalStringSlice("name")[0]
+	name := c.StringSlice("name")[0]
 
 	diskhome := getDiskHome()
 	disk := fmt.Sprintf("path=%s/%s.img,size=%s", diskhome, name, c.String("disk"))

@@ -15,12 +15,7 @@ func main() {
 	app.Usage = "Manage virtual machines"
 	app.Version = "1.0"
 
-	app.Flags = []cli.Flag{
-		cli.StringSliceFlag{
-			Name:  "name,n",
-			Usage: "Virtual machine's name",
-		},
-	}
+	app.Flags = []cli.Flag{}
 	app.Commands = []cli.Command{
 		createCmd,
 		deleteCmd,

@@ -28,12 +28,16 @@ var listCmd = cli.Command{
 			Name:  "verbose,v",
 			Usage: "Display more vm information",
 		},
+		cli.StringSliceFlag{
+			Name:  "name,n",
+			Usage: "Virtual machine's name",
+		},
 	},
 }
 
 func list_vm(c *cli.Context) {
 	verbose := c.Bool("verbose")
-	machines := c.GlobalString("name")
+	machines := c.String("name")
 	doms, err := virtConn.ListAllDomains(0)
 	if err != nil {
 		log.Fatal(err)
