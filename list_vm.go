@@ -5,6 +5,7 @@ import (
 	"github.com/libvirt/libvirt-go"
 	"github.com/urfave/cli"
 	"log"
+	"os"
 	"sort"
 	"strings"
 )
@@ -36,6 +37,13 @@ var listCmd = cli.Command{
 }
 
 func list_vm(c *cli.Context) {
+	diskhome := "/home/libvirt"
+	f, err := os.Open(diskhome)
+	if err != nil {
+		diskhome = "/opt/libvirt"
+	}
+	defer f.Close()
+
 	verbose := c.Bool("verbose")
 	machines := c.String("name")
 	doms, err := virtConn.ListAllDomains(0)
@@ -68,7 +76,7 @@ func list_vm(c *cli.Context) {
 				}
 				memories[name] = di.Memory / 1024
 				vcpus[name] = di.NrVirtCpu
-				bi, err := dom.GetBlockInfo("/opt/libvirt/disks/"+name+".img", 0)
+				bi, err := dom.GetBlockInfo(diskhome+"/disks/"+name+".img", 0)
 				if err != nil {
 					log.Fatal(err)
 				}
