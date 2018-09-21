@@ -78,8 +78,13 @@ func list_vm(c *cli.Context) {
 
 		dom.Free()
 	}
-	sort.Strings(orderdNames)
-	sort.Slice(orderdNames, func(i, j int) bool { return states[orderdNames[i]] < states[orderdNames[j]] })
+	sort.Slice(orderdNames, func(i, j int) bool {
+		less := orderdNames[i] < orderdNames[j]
+		if orderdNames[i] == orderdNames[j] {
+			less = states[orderdNames[i]] > states[orderdNames[j]]
+		}
+		return less
+	})
 
 	if verbose {
 		fmt.Printf("%-8s\t%-8s\t%-8s\t%-8s\t%-8s\n", "name", "state", "cpu", "memory(M)", "disk(G)")

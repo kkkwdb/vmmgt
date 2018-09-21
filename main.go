@@ -13,7 +13,7 @@ func main() {
 	app := cli.NewApp()
 	app.Name = "vmmgt"
 	app.Usage = "Manage virtual machines"
-	app.Version = "1.0"
+	app.Version = "0.5"
 
 	app.Flags = []cli.Flag{}
 	app.Commands = []cli.Command{
