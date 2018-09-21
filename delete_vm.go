@@ -6,6 +6,7 @@ import (
 	"github.com/urfave/cli"
 	"log"
 	"os"
+	"strings"
 )
 
 var deleteCmd = cli.Command{
@@ -19,28 +20,44 @@ var deleteCmd = cli.Command{
 			Name:  "name,n",
 			Usage: "Virtual machine's name",
 		},
+		cli.StringFlag{
+			Name:   "names",
+			Hidden: true,
+		},
 	},
 }
 
 func deleteCheck(c *cli.Context) error {
-	delnames := c.StringSlice("name")
-	if len(delnames) == 0 {
+	names := make([]string, 0)
+	oriNames := c.StringSlice("name")
+	if len(oriNames) == 0 {
 		log.Fatal("name is empty")
 	}
 
-	for _, delname := range delnames {
-		_, err := virtConn.LookupDomainByName(delname)
+	for _, name := range oriNames {
+		for _, n := range strings.Split(name, ",") {
+			names = append(names, n)
+		}
+	}
+
+	for _, name := range names {
+		_, err := virtConn.LookupDomainByName(name)
 		if err != nil {
 			log.Fatal(err)
 		}
+	}
+
+	err := c.Set("names", strings.Join(names, " "))
+	if err != nil {
+		log.Fatal(err)
 	}
 
 	return nil
 }
 
 func deleteVm(c *cli.Context) error {
-	delnames := c.StringSlice("name")
-	for _, delname := range delnames {
+	delnames := c.String("names")
+	for _, delname := range strings.Split(delnames, " ") {
 		dom, err := virtConn.LookupDomainByName(delname)
 		if err != nil {
 			log.Fatal(err)

@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"strconv"
+	"strings"
 )
 
 var createCmd = cli.Command{
@@ -19,6 +20,10 @@ var createCmd = cli.Command{
 		cli.StringSliceFlag{
 			Name:  "name,n",
 			Usage: "Virtual machine's names '-n vm1,vm2'",
+		},
+		cli.StringFlag{
+			Name:   "names",
+			Hidden: true,
 		},
 		cli.StringFlag{
 			Name:  "cpu,c",
@@ -43,24 +48,41 @@ var createCmd = cli.Command{
 }
 
 func createCheck(c *cli.Context) error {
-	names := c.StringSlice("name")
-	if len(names) == 0 {
+	names := make([]string, 0)
+	oriNames := c.StringSlice("name")
+
+	if len(oriNames) == 0 {
 		log.Fatal("name is empty")
 	}
-	new := names[0]
+	for _, name := range oriNames {
+		for _, n := range strings.Split(name, ",") {
+			names = append(names, n)
+		}
+	}
 
 	doms, err := virtConn.ListAllDomains(0)
 	if err != nil {
 		log.Fatal(err)
 	}
+	domNames := make(map[string]bool)
 	for _, dom := range doms {
 		name, err := dom.GetName()
 		if err != nil {
 			log.Fatal(err)
 		}
-		if new == name {
-			log.Fatal("the name is already used")
+
+		domNames[name] = true
+	}
+
+	for _, new := range names {
+		if domNames[new] {
+			log.Fatalf("the name '%s' is already used", new)
 		}
+	}
+
+	err = c.Set("names", strings.Join(names, " "))
+	if err != nil {
+		log.Fatal(err)
 	}
 
 	return nil
@@ -79,22 +101,15 @@ func getDiskHome() string {
 	return diskhome + "/disks"
 }
 
-func createVm(c *cli.Context) {
-	name := c.StringSlice("name")[0]
-
+func doCreateVm(c *cli.Context, name string, macTail uint64) {
 	diskhome := getDiskHome()
 	disk := fmt.Sprintf("path=%s/%s.img,size=%s", diskhome, name, c.String("disk"))
 
 	mac1 := ""
 	mac2 := ""
-	macTail := c.String("macTail")
-	if macTail != "" {
-		_, err := strconv.ParseUint(macTail, 16, 8)
-		if err != nil {
-			log.Fatal(err)
-		}
-		mac1 = ",mac=52:54:00:51:01:" + macTail
-		mac2 = ",mac=52:54:00:51:02:" + macTail
+	if macTail != 0 {
+		mac1 = ",mac=52:54:00:51:01:" + strconv.FormatUint(macTail, 16)
+		mac2 = ",mac=52:54:00:51:02:" + strconv.FormatUint(macTail, 16)
 	}
 
 	cmd := exec.Command("virt-install",
@@ -118,5 +133,28 @@ func createVm(c *cli.Context) {
 	err := cmd.Run()
 	if err != nil {
 		log.Fatal(err)
+	}
+}
+func createVm(c *cli.Context) {
+	var macNum uint64 = 0
+	var err error
+	macTail := c.String("macTail")
+	names := c.String("names")
+
+	if macTail != "" {
+		macNum, err = strconv.ParseUint(macTail, 16, 8)
+		if err != nil {
+			log.Fatal(err)
+		}
+	}
+
+	for _, name := range strings.Split(names, " ") {
+		doCreateVm(c, name, macNum)
+		if macNum != 0 {
+			macNum++
+			if macNum > 254 {
+				log.Fatalf("mac %u out of range", macNum)
+			}
+		}
 	}
 }
