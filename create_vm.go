@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"github.com/urfave/cli"
+	"io"
 	"log"
 	"os"
 	"os/exec"
@@ -40,9 +41,18 @@ var createCmd = cli.Command{
 			Usage: "disk capability for vm",
 			Value: "100",
 		},
+		cli.IntFlag{
+			Name:  "netnum",
+			Value: 1,
+			Usage: "network num, 1:defualt, 2:mgt-net,data-net",
+		},
 		cli.StringFlag{
 			Name:  "macTail",
 			Usage: "the mac byte",
+		},
+		cli.StringFlag{
+			Name:  "install,i",
+			Usage: "install method: pxe, import, {iso_file}",
 		},
 	},
 }
@@ -95,15 +105,20 @@ func getDiskHome() string {
 		diskhome = "/opt/libvirt"
 	}
 	defer f.Close()
-	if err := os.Mkdir(diskhome+"/disks", 0770); err != nil && !os.IsExist(err) {
+	if err := os.Mkdir(diskhome+"/disks", 0777); err != nil && !os.IsExist(err) {
 		log.Fatal(err)
 	}
 	return diskhome + "/disks"
 }
 
-func doCreateVm(c *cli.Context, name string, macTail uint64) {
+func getCmdPara(c *cli.Context, name string, macTail uint64) []string {
+	cmdPara := make(map[string]string)
+
+	netNum := c.Int("netnum")
 	diskhome := getDiskHome()
-	disk := fmt.Sprintf("path=%s/%s.img,size=%s", diskhome, name, c.String("disk"))
+	diskpath := diskhome + "/" + name + ".img"
+	disk := fmt.Sprintf("path=%s,size=%s", diskpath, c.String("disk"))
+	install := c.String("install")
 
 	mac1 := ""
 	mac2 := ""
@@ -112,32 +127,83 @@ func doCreateVm(c *cli.Context, name string, macTail uint64) {
 		mac2 = ",mac=52:54:00:51:02:" + strconv.FormatUint(macTail, 16)
 	}
 
-	cmd := exec.Command("virt-install",
-		"--name", name,
-		"--memory", c.String("memory"),
-		"--disk", disk,
-		"--graphics", "vnc,listen=0.0.0.0",
-		"--sound", "default",
-		"--boot", "hd,cdrom",
-		"--vcpus", c.String("cpu"),
-		"--noautoconsole",
-		"--serial", "pty",
-		"--console", "pty,target_type=serial",
-		"--network", "network=mgt-net,model=virtio"+mac1,
-		"--network", "network=data-net,model=virtio"+mac2,
-		"--os-type", "linux",
-		"--os-variant", "rhel7",
-		"--pxe")
+	cmdPara["--name"] = name
+	cmdPara["--memory"] = c.String("memory")
+	cmdPara["--disk"] = disk
+	cmdPara["--graphics"] = "vnc,listen=0.0.0.0"
+	cmdPara["--sound"] = "default"
+	cmdPara["--boot"] = "hd,cdrom"
+	cmdPara["--vcpus"] = c.String("cpu")
+	cmdPara["--noautoconsole"] = ""
+	cmdPara["--serial"] = "pty"
+	cmdPara["--console"] = "pty,target_type=serial"
+	cmdPara["--os-type"] = "linux"
+	cmdPara["--os-variant"] = "rhel7"
+
+	if install == "pxe" {
+		cmdPara["--pxe"] = ""
+	} else if strings.HasSuffix(install, ".iso") {
+		cmdPara["--cdrom"] = install
+	} else {
+		cmdPara["--import"] = ""
+		fmt.Printf("copy %s to %s\n", install, diskpath)
+		dstFile, err := os.Create(diskpath)
+		if err != nil {
+			return nil
+		}
+		srcFile, err := os.Open(install)
+		if err != nil {
+			return nil
+		}
+		_, err = io.Copy(dstFile, srcFile)
+		if err != nil {
+			return nil
+		}
+	}
+
+	if netNum == 2 {
+		cmdPara["--network1"] = "network=mgt-net,model=virtio" + mac1
+		cmdPara["--network"] = "network=data-net,model=virtio" + mac2
+	} else if netNum == 1 {
+		cmdPara["--network"] = "network=default,model=virtio" + mac1
+	} else {
+		return nil
+	}
+
+	parameters := make([]string, 0)
+	for k, v := range cmdPara {
+		if k == "--network1" || k == "--network2" {
+			k = "--network"
+		}
+		parameters = append(parameters, k)
+		if v != "" {
+			parameters = append(parameters, v)
+		}
+	}
+	return parameters
+}
+
+func doCreateVm(c *cli.Context, name string, macTail uint64) error {
+	cmdPara := getCmdPara(c, name, macTail)
+	if cmdPara == nil {
+		return fmt.Errorf("invalid parameters")
+	}
+
+	fmt.Printf("create vm %s: %s\n", name, cmdPara)
+	cmd := exec.Command("virt-install", cmdPara...)
+
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	err := cmd.Run()
 	if err != nil {
 		log.Fatal(err)
 	}
+	return nil
 }
 func createVm(c *cli.Context) {
 	var macNum uint64 = 0
 	var err error
+
 	macTail := c.String("macTail")
 	names := c.String("names")
 
@@ -149,7 +215,9 @@ func createVm(c *cli.Context) {
 	}
 
 	for _, name := range strings.Split(names, " ") {
-		doCreateVm(c, name, macNum)
+		if err := doCreateVm(c, name, macNum); err != nil {
+			log.Fatal(err)
+		}
 		if macNum != 0 {
 			macNum++
 			if macNum > 254 {
@@ -157,4 +225,5 @@ func createVm(c *cli.Context) {
 			}
 		}
 	}
+	fmt.Println("")
 }
