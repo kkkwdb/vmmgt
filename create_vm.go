@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"github.com/urfave/cli"
-	"io"
 	"log"
 	"os"
 	"os/exec"
@@ -52,6 +51,7 @@ var createCmd = cli.Command{
 		},
 		cli.StringFlag{
 			Name:  "install,i",
+			Value: "default",
 			Usage: "install method: pxe, import, {iso_file}",
 		},
 	},
@@ -146,17 +146,16 @@ func getCmdPara(c *cli.Context, name string, macTail uint64) []string {
 		cmdPara["--cdrom"] = install
 	} else {
 		cmdPara["--import"] = ""
+		if install == "default" {
+			install = diskhome + "/../images/centos7.qcow2"
+		}
 		fmt.Printf("copy %s to %s\n", install, diskpath)
-		dstFile, err := os.Create(diskpath)
+		cmd := exec.Command("/bin/cp", install, diskpath)
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+		err := cmd.Run()
 		if err != nil {
-			return nil
-		}
-		srcFile, err := os.Open(install)
-		if err != nil {
-			return nil
-		}
-		_, err = io.Copy(dstFile, srcFile)
-		if err != nil {
+			log.Println(err)
 			return nil
 		}
 	}
