@@ -23,7 +23,7 @@ var listCmd = cli.Command{
 	Name:    "list",
 	Aliases: []string{"l"},
 	Usage:   "list virtual machines",
-	Action:  list_vm,
+	Action:  listVm,
 	Flags: []cli.Flag{
 		cli.BoolFlag{
 			Name:  "verbose,v",
@@ -36,7 +36,7 @@ var listCmd = cli.Command{
 	},
 }
 
-func list_vm(c *cli.Context) {
+func listVm(c *cli.Context) {
 	diskhome := "/home/libvirt"
 	f, err := os.Open(diskhome)
 	if err != nil {
@@ -55,6 +55,7 @@ func list_vm(c *cli.Context) {
 	memories := make(map[string]uint64)
 	disks := make(map[string]uint64)
 	states := make(map[string]int)
+	infs := make(map[string][]string)
 	orderdNames := make([]string, 0)
 	for _, dom := range doms {
 		name, err := dom.GetName()
@@ -81,6 +82,23 @@ func list_vm(c *cli.Context) {
 					log.Fatal(err)
 				}
 				disks[name] = bi.Capacity / 1024 / 1024 / 1024
+
+				dis, err := dom.ListAllInterfaceAddresses(libvirt.DOMAIN_INTERFACE_ADDRESSES_SRC_AGENT)
+				if err != nil {
+					continue
+				}
+				infs[name] = make([]string, 0, len(dis))
+				for _, di := range dis {
+					if di.Name == "lo" {
+						continue
+					}
+					for _, addr := range di.Addrs {
+						if strings.Contains(addr.Addr, ":") {
+							continue
+						}
+						infs[name] = append(infs[name], addr.Addr)
+					}
+				}
 			}
 		}
 
@@ -95,9 +113,14 @@ func list_vm(c *cli.Context) {
 	})
 
 	if verbose {
-		fmt.Printf("%-8s\t%-8s\t%-8s\t%-8s\t%-8s\n", "name", "state", "cpu", "memory(M)", "disk(G)")
+		fmt.Printf("%-8s%-8s%-8s%-8s%-8s%-8s\n", "name", "state", "cpu", "mem(M)", "disk(G)", "interface")
 		for _, name := range orderdNames {
-			fmt.Printf("%-8s\t%-8s\t%-8d\t%-8d\t%-8d\n", name, stateTable[states[name]], vcpus[name], memories[name], disks[name])
+			fmt.Printf("%-8s%-8s%-8d%-8d%-8d",
+				name, stateTable[states[name]], vcpus[name], memories[name], disks[name])
+			for _, inf := range infs[name] {
+				fmt.Printf("%-8s ", inf)
+			}
+			fmt.Println("")
 		}
 		return
 	}

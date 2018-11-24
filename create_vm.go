@@ -42,7 +42,7 @@ var createCmd = cli.Command{
 		},
 		cli.IntFlag{
 			Name:  "netnum",
-			Value: 1,
+			Value: 0,
 			Usage: "network num, 1:defualt, 2:mgt-net,data-net",
 		},
 		cli.StringFlag{
@@ -111,7 +111,7 @@ func getDiskHome() string {
 	return diskhome + "/disks"
 }
 
-func getCmdPara(c *cli.Context, name string, macTail uint64) []string {
+func getCmdPara(c *cli.Context, name string, macTail uint64) ([]string, string) {
 	cmdPara := make(map[string]string)
 
 	netNum := c.Int("netnum")
@@ -145,7 +145,6 @@ func getCmdPara(c *cli.Context, name string, macTail uint64) []string {
 	} else if strings.HasSuffix(install, ".iso") {
 		cmdPara["--cdrom"] = install
 	} else {
-		cmdPara["--import"] = ""
 		if install == "default" {
 			install = diskhome + "/../images/centos7.qcow2"
 		}
@@ -154,19 +153,43 @@ func getCmdPara(c *cli.Context, name string, macTail uint64) []string {
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
 		err := cmd.Run()
-		if err != nil {
-			log.Println(err)
-			return nil
+		if err == nil {
+			cmdPara["--import"] = ""
+		} else {
+			fmt.Println("import image error, use pxe to install")
+			cmdPara["--pxe"] = ""
+		}
+	}
+
+	if netNum == 0 {
+		netDef, _ := virtConn.LookupNetworkByName("default")
+		if netDef != nil {
+			netNum++
+			netDef.Free()
+		} else {
+			netMgt, _ := virtConn.LookupNetworkByName("mgt-net")
+			netData, _ := virtConn.LookupNetworkByName("data-net")
+			if netMgt != nil {
+				netNum++
+				netMgt.Free()
+			}
+			if netData != nil {
+				netNum++
+				netData.Free()
+			}
+			if netNum != 2 {
+				return nil, ""
+			}
 		}
 	}
 
 	if netNum == 2 {
 		cmdPara["--network1"] = "network=mgt-net,model=virtio" + mac1
-		cmdPara["--network"] = "network=data-net,model=virtio" + mac2
+		cmdPara["--network2"] = "network=data-net,model=virtio" + mac2
 	} else if netNum == 1 {
 		cmdPara["--network"] = "network=default,model=virtio" + mac1
 	} else {
-		return nil
+		return nil, ""
 	}
 
 	parameters := make([]string, 0)
@@ -179,11 +202,11 @@ func getCmdPara(c *cli.Context, name string, macTail uint64) []string {
 			parameters = append(parameters, v)
 		}
 	}
-	return parameters
+	return parameters, diskpath
 }
 
 func doCreateVm(c *cli.Context, name string, macTail uint64) error {
-	cmdPara := getCmdPara(c, name, macTail)
+	cmdPara, diskPath := getCmdPara(c, name, macTail)
 	if cmdPara == nil {
 		return fmt.Errorf("invalid parameters")
 	}
@@ -195,6 +218,10 @@ func doCreateVm(c *cli.Context, name string, macTail uint64) error {
 	cmd.Stderr = os.Stderr
 	err := cmd.Run()
 	if err != nil {
+		cmd := exec.Command("rm", "-f", diskPath)
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+		cmd.Run()
 		log.Fatal(err)
 	}
 	return nil

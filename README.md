@@ -24,3 +24,6 @@ go build
 
 ## delete
 ./vmmgt delete -n new
+
+## network
+./vmmgt network list
