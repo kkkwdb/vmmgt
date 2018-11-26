@@ -113,9 +113,9 @@ func listVm(c *cli.Context) {
 	})
 
 	if verbose {
-		fmt.Printf("%-8s%-8s%-8s%-8s%-8s%-8s\n", "name", "state", "cpu", "mem(M)", "disk(G)", "interface")
+		fmt.Printf("%-16s%-8s%-8s%-8s%-8s%-8s\n", "name", "state", "cpu", "mem(M)", "disk(G)", "interface")
 		for _, name := range orderdNames {
-			fmt.Printf("%-8s%-8s%-8d%-8d%-8d",
+			fmt.Printf("%-16s%-8s%-8d%-8d%-8d",
 				name, stateTable[states[name]], vcpus[name], memories[name], disks[name])
 			for _, inf := range infs[name] {
 				fmt.Printf("%-8s ", inf)
