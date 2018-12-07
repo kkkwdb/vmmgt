@@ -135,9 +135,9 @@ func listVm(c *cli.Context) {
 	verbose := c.Bool("verbose")
 	virtMachines := getVms(machines)
 	if verbose {
-		fmt.Printf("%-8s%-8s%-8s%-8s%-8s%-8s\n", "name", "state", "cpu", "mem(M)", "disk(G)", "interface")
+		fmt.Printf("%-16s%-8s%-8s%-8s%-8s%-8s\n", "name", "state", "cpu", "mem(M)", "disk(G)", "interface")
 		for _, vm := range virtMachines {
-			fmt.Printf("%-8s%-8s%-8d%-8d%-8d", vm.name, vm.state, vm.vcpu, vm.memory, vm.disk)
+			fmt.Printf("%-16s%-8s%-8d%-8d%-8d", vm.name, vm.state, vm.vcpu, vm.memory, vm.disk)
 			for _, inf := range vm.infs {
 				fmt.Printf("%-8s ", inf)
 			}
