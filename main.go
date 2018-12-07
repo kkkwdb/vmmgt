@@ -20,6 +20,7 @@ func main() {
 		createCmd,
 		deleteCmd,
 		listCmd,
+		sshCmd,
 		networkCmd,
 	}
 
