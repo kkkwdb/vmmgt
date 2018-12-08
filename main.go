@@ -20,8 +20,9 @@ func main() {
 		createCmd,
 		deleteCmd,
 		listCmd,
-		sshCmd,
 		networkCmd,
+		sshCmd,
+		cpCmd,
 	}
 
 	var err error
