@@ -80,6 +80,10 @@ func cpVm(c *cli.Context) {
 	virtMachines := getVms("[]")
 	for _, vm := range virtMachines {
 		if len(vm.infs) < 1 {
+			if vm.name == vmName {
+				fmt.Printf("Can't find %s's ip\n", vmName)
+				return
+			}
 			continue
 		}
 		if vm.name == vmName || vm.infs[0] == vmName {
@@ -96,5 +100,5 @@ func cpVm(c *cli.Context) {
 			return
 		}
 	}
-	fmt.Println("Can't find machine")
+	fmt.Println("Can't find machine: " + vmName)
 }
