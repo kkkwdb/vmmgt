@@ -46,7 +46,7 @@ var listCmd = cli.Command{
 	},
 }
 
-func getVms(machines string) []virtMachine {
+func getVms(machines []string) []virtMachine {
 	diskhome := "/home/libvirt"
 	f, err := os.Open(diskhome)
 	if err != nil {
@@ -71,7 +71,7 @@ func getVms(machines string) []virtMachine {
 			log.Fatal(err)
 		}
 
-		if machines == "[]" || strings.Contains(machines, name) {
+		if len(machines) == 0 || strings.Contains(strings.Join(machines, " "), name) {
 			state, _, err := dom.GetState()
 			if err != nil {
 				log.Fatal(err)
@@ -131,7 +131,10 @@ func getVms(machines string) []virtMachine {
 }
 
 func listVm(c *cli.Context) {
-	machines := c.String("name")
+	machines := c.StringSlice("name")
+	for _, m := range c.Args() {
+		machines = append(machines, m)
+	}
 	verbose := c.Bool("verbose")
 	virtMachines := getVms(machines)
 	if verbose {

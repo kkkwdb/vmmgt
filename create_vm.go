@@ -61,13 +61,16 @@ func createCheck(c *cli.Context) error {
 	names := make([]string, 0)
 	oriNames := c.StringSlice("name")
 
-	if len(oriNames) == 0 {
-		log.Fatal("name is empty")
-	}
 	for _, name := range oriNames {
 		for _, n := range strings.Split(name, ",") {
 			names = append(names, n)
 		}
+	}
+	for _, name := range c.Args() {
+		names = append(names, name)
+	}
+	if len(names) == 0 {
+		log.Fatal("name is empty")
 	}
 
 	doms, err := virtConn.ListAllDomains(0)

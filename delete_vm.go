@@ -30,14 +30,17 @@ var deleteCmd = cli.Command{
 func deleteCheck(c *cli.Context) error {
 	names := make([]string, 0)
 	oriNames := c.StringSlice("name")
-	if len(oriNames) == 0 {
-		log.Fatal("name is empty")
-	}
 
 	for _, name := range oriNames {
 		for _, n := range strings.Split(name, ",") {
 			names = append(names, n)
 		}
+	}
+	for _, name := range c.Args() {
+		names = append(names, name)
+	}
+	if len(names) == 0 {
+		log.Fatal("name is empty")
 	}
 
 	for _, name := range names {
@@ -79,6 +82,6 @@ func deleteVm(c *cli.Context) error {
 		}
 		os.Remove(getDiskHome() + "/" + delname + ".img")
 	}
-	fmt.Println("delete vm", c.StringSlice("name"))
+	fmt.Println("delete vm", c.String("names"))
 	return nil
 }

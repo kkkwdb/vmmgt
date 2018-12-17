@@ -26,7 +26,7 @@ func checkArgs(c *cli.Context) error {
 
 func sshVm(c *cli.Context) {
 	name := c.Args().First()
-	virtMachines := getVms("[]")
+	virtMachines := getVms(nil)
 	for _, vm := range virtMachines {
 		if len(vm.infs) < 1 {
 			continue
@@ -77,7 +77,7 @@ func cpVm(c *cli.Context) {
 
 	vmName := vmAndPath[0]
 	vmPath := vmAndPath[1]
-	virtMachines := getVms("[]")
+	virtMachines := getVms(nil)
 	for _, vm := range virtMachines {
 		if len(vm.infs) < 1 {
 			if vm.name == vmName {
