@@ -15,6 +15,12 @@ var sshCmd = cli.Command{
 	Usage:    "ssh to virtual machine",
 	Before:   checkArgs,
 	Action:   sshVm,
+	Flags: []cli.Flag{
+		cli.BoolFlag{
+			Name:  "regexp,r",
+			Usage: "Use regular expression match",
+		},
+	},
 }
 
 func checkArgs(c *cli.Context) error {
@@ -25,13 +31,22 @@ func checkArgs(c *cli.Context) error {
 }
 
 func sshVm(c *cli.Context) {
+	method := 0
+	if c.Bool("regexp") {
+		method = 1
+	}
 	name := c.Args().First()
-	virtMachines := getVms(nil)
+	virtMachines := getVms(nil, method)
 	for _, vm := range virtMachines {
+		matched := matchName(vm.name, []string{name}, method)
+		if !matched {
+			continue
+		}
 		if len(vm.infs) < 1 {
 			continue
 		}
-		if vm.name == name || vm.infs[0] == name {
+		if matched || vm.infs[0] == name {
+			fmt.Printf("login vm: %s/%s\n", vm.name, vm.infs[0])
 			cmd := exec.Command("ssh", vm.infs[0])
 			cmd.Stdin = os.Stdin
 			cmd.Stdout = os.Stdout
@@ -56,9 +71,20 @@ var cpCmd = cli.Command{
 		return nil
 	},
 	Action: cpVm,
+	Flags: []cli.Flag{
+		cli.BoolFlag{
+			Name:  "regexp,r",
+			Usage: "Use regular expression match",
+		},
+	},
 }
 
 func cpVm(c *cli.Context) {
+	method := 0
+	if c.Bool("regexp") {
+		method = 1
+	}
+
 	path1 := c.Args().First()
 	path2 := c.Args().Get(1)
 
@@ -77,16 +103,20 @@ func cpVm(c *cli.Context) {
 
 	vmName := vmAndPath[0]
 	vmPath := vmAndPath[1]
-	virtMachines := getVms(nil)
+	virtMachines := getVms(nil, method)
 	for _, vm := range virtMachines {
+		matched := matchName(vm.name, []string{vmName}, method)
+		if !matched {
+			continue
+		}
 		if len(vm.infs) < 1 {
-			if vm.name == vmName {
+			if matched {
 				fmt.Printf("Can't find %s's ip\n", vmName)
 				return
 			}
 			continue
 		}
-		if vm.name == vmName || vm.infs[0] == vmName {
+		if matched || vm.infs[0] == vmName {
 			cmd := exec.Command("scp", "-r", vm.infs[0]+":"+vmPath, hostPath)
 			if dir == "fromHost" {
 				cmd = exec.Command("scp", "-r", hostPath, vm.infs[0]+":"+vmPath)

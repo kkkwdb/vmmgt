@@ -43,16 +43,16 @@ var createCmd = cli.Command{
 		cli.IntFlag{
 			Name:  "netnum",
 			Value: 0,
-			Usage: "network num, 1:defualt, 2:mgt-net,data-net",
+			Usage: "network num, 0:auto, 1:defualt network, 2:mgt-net,data-net network",
 		},
 		cli.StringFlag{
 			Name:  "macTail",
-			Usage: "the mac byte",
+			Usage: "the last mac byte",
 		},
 		cli.StringFlag{
 			Name:  "install,i",
-			Value: "default",
-			Usage: "install method: pxe, import, {iso_file}",
+			Value: "auto",
+			Usage: "install method: import, pxe, {iso_file}",
 		},
 	},
 }
@@ -148,7 +148,7 @@ func getCmdPara(c *cli.Context, name string, macTail uint64) ([]string, string) 
 	} else if strings.HasSuffix(install, ".iso") {
 		cmdPara["--cdrom"] = install
 	} else {
-		if install == "default" {
+		if install == "auto" {
 			install = diskhome + "/../images/centos7.qcow2"
 		}
 		fmt.Printf("copy %s to %s\n", install, diskpath)
