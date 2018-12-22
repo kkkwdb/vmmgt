@@ -41,6 +41,10 @@ var listCmd = cli.Command{
 			Name:  "verbose,v",
 			Usage: "Display more vm information",
 		},
+		cli.BoolFlag{
+			Name:  "all,a",
+			Usage: "Display all vm, default running vm",
+		},
 		cli.StringSliceFlag{
 			Name:  "name,n",
 			Usage: "Virtual machine's name patterns",
@@ -166,11 +170,15 @@ func listVm(c *cli.Context) {
 	if c.Bool("regexp") {
 		method = 1
 	}
+	all := c.Bool("all")
 
 	virtMachines := getVms(machines, method)
 	if verbose {
 		fmt.Printf("%-16s%-8s%-8s%-8s%-8s%-8s\n", "name", "state", "cpu", "mem(M)", "disk(G)", "interface")
 		for _, vm := range virtMachines {
+			if !all && stateTable[libvirt.DOMAIN_RUNNING] != vm.state {
+				continue
+			}
 			fmt.Printf("%-16s%-8s%-8d%-8d%-8d", vm.name, vm.state, vm.vcpu, vm.memory, vm.disk)
 			for _, inf := range vm.infs {
 				fmt.Printf("%-8s ", inf)
@@ -180,6 +188,9 @@ func listVm(c *cli.Context) {
 		return
 	}
 	for _, vm := range virtMachines {
+		if !all && stateTable[libvirt.DOMAIN_RUNNING] != vm.state {
+			continue
+		}
 		fmt.Printf("%-8s\t%s\n", vm.name, vm.state)
 	}
 }
