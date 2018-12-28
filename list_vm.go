@@ -115,11 +115,11 @@ func getVms(machines []string, method int) []virtMachine {
 		}
 		memories[name] = di.Memory / 1024
 		vcpus[name] = di.NrVirtCpu
+		disks[name] = 0
 		bi, err := dom.GetBlockInfo(diskhome+"/disks/"+name+".img", 0)
-		if err != nil {
-			log.Fatal(err)
+		if err == nil {
+			disks[name] = bi.Capacity / 1024 / 1024 / 1024
 		}
-		disks[name] = bi.Capacity / 1024 / 1024 / 1024
 
 		dis, err := dom.ListAllInterfaceAddresses(libvirt.DOMAIN_INTERFACE_ADDRESSES_SRC_AGENT)
 		if err != nil {

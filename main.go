@@ -15,7 +15,27 @@ func main() {
 	app.Usage = "Manage virtual machines"
 	app.Version = "v0.7"
 
-	app.Flags = []cli.Flag{}
+	app.Flags = []cli.Flag{
+		cli.StringFlag{
+			Name:  "connect,c",
+			Usage: "Connect to hypervisor",
+		},
+	}
+
+	app.Before = func(c *cli.Context) error {
+		var err error
+		hv := c.String("connect")
+		if hv == "" {
+			virtConn, err = libvirt.NewConnect("qemu:///system")
+		} else {
+			virtConn, err = libvirt.NewConnect("qemu+ssh://" + hv + "/system")
+		}
+		if err != nil {
+			return err
+		}
+		return nil
+	}
+
 	app.Commands = []cli.Command{
 		createCmd,
 		deleteCmd,
@@ -26,15 +46,8 @@ func main() {
 		dnatCmd,
 	}
 
-	var err error
-	virtConn, err = libvirt.NewConnect("qemu:///system")
-	if err != nil {
+	if err := app.Run(os.Args); err != nil {
 		log.Fatal(err)
 	}
-	defer virtConn.Close()
-
-	err = app.Run(os.Args)
-	if err != nil {
-		log.Fatal(err)
-	}
+	virtConn.Close()
 }
