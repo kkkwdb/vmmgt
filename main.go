@@ -23,6 +23,7 @@ func main() {
 		networkCmd,
 		sshCmd,
 		cpCmd,
+		dnatCmd,
 	}
 
 	var err error
