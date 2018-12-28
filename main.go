@@ -13,7 +13,13 @@ func main() {
 	app := cli.NewApp()
 	app.Name = "vmmgt"
 	app.Usage = "Manage virtual machines"
-	app.Version = "v0.7"
+	app.Version = "v0.8"
+	app.Authors = []cli.Author{
+		cli.Author{
+			Name:  "wangdb",
+			Email: "wangdb@sugon.com",
+		},
+	}
 
 	app.Flags = []cli.Flag{
 		cli.StringFlag{
@@ -49,5 +55,7 @@ func main() {
 	if err := app.Run(os.Args); err != nil {
 		log.Fatal(err)
 	}
-	virtConn.Close()
+	if virtConn != nil {
+		virtConn.Close()
+	}
 }

@@ -91,7 +91,7 @@ func dnatList(c *cli.Context) {
 			if len(fs) < 3 {
 				continue
 			}
-			if strings.Index(line, "toaddr="+vm.infs[0]) > 0 {
+			if vm.infs[0] == fs[3][7:] {
 				if verbose {
 					fmt.Printf("%-16s%-16s%-16s%-16s%-16s\n", vm.name, vm.infs[0], fs[0][5:], fs[1][6:], fs[2][7:])
 				} else {
