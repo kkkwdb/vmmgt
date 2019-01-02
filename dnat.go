@@ -116,6 +116,11 @@ var dnatAddCmd = cli.Command{
 			Name:  "dport,d",
 			Usage: "Virtual machine port",
 		},
+		cli.StringFlag{
+			Name:  "proto,p",
+			Value: "tcp",
+			Usage: "Protocal",
+		},
 	},
 	Action: dnatAdd,
 	Before: func(c *cli.Context) error {
@@ -129,6 +134,7 @@ var dnatAddCmd = cli.Command{
 func dnatAdd(c *cli.Context) {
 	sport := strconv.Itoa(c.Int("sport"))
 	dport := strconv.Itoa(c.Int("dport"))
+	proto := c.String("proto")
 	method := 0
 	if c.Parent().Bool("regexp") {
 		method = 1
@@ -143,7 +149,7 @@ func dnatAdd(c *cli.Context) {
 		if !matched {
 			continue
 		}
-		arg := "--add-forward-port=port=" + sport + ":proto=tcp:toport=" + dport + ":toaddr=" + vm.infs[0]
+		arg := "--add-forward-port=port=" + sport + ":proto=" + proto + ":toport=" + dport + ":toaddr=" + vm.infs[0]
 
 		cmd := exec.Command("firewall-cmd", arg)
 		cmd.Stdin = os.Stdin
@@ -178,6 +184,10 @@ var dnatDelCmd = cli.Command{
 			Value: 0,
 			Usage: "Virtual machine port",
 		},
+		cli.StringFlag{
+			Name:  "proto,p",
+			Usage: "Protocal",
+		},
 	},
 	Action: dnatDel,
 	Before: func(c *cli.Context) error {
@@ -198,6 +208,7 @@ func dnatDel(c *cli.Context) {
 
 	sport := strconv.Itoa(c.Int("sport"))
 	dport := strconv.Itoa(c.Int("dport"))
+	proto := c.String("proto")
 	method := 0
 	if c.Parent().Bool("regexp") {
 		method = 1
@@ -219,7 +230,7 @@ func dnatDel(c *cli.Context) {
 			if len(fs) < 3 {
 				continue
 			}
-			if fs[3][7:] == vm.infs[0] &&
+			if fs[3][7:] == vm.infs[0] && (proto == "" || proto == fs[1][6:]) &&
 				(sport == "0" || fs[0][5:] == sport) && (dport == "0" || fs[2][7:] == dport) {
 				arg = "--remove-forward-port=" + line
 				break
