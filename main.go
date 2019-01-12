@@ -50,6 +50,7 @@ func main() {
 		sshCmd,
 		cpCmd,
 		dnatCmd,
+		hostNetdevCmd,
 	}
 
 	if err := app.Run(os.Args); err != nil {
