@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/libvirt/libvirt-go"
 	"github.com/urfave/cli"
+	"net"
 	"os"
 	"os/exec"
 	"path"
@@ -17,30 +18,74 @@ const (
 	pciPathPre = "/sys/bus/pci/devices/0000:"
 )
 
+type DevAddr struct {
+	XMLName       xml.Name `xml:"address"`
+	Type          string   `xml:"type,attr"`
+	Domain        string   `xml:"domain,attr,omitempty"`
+	Bus           string   `xml:"bus,attr,omitempty"`
+	Slot          string   `xml:"slot,attr,omitempty"`
+	Function      string   `xml:"function,attr,omitempty"`
+	multifunction string   `xml:"function,attr,omitempty"`
+}
+
+type hostDevConfig struct {
+	XMLName    xml.Name `xml:"hostdev"`
+	Mode       string   `xml:"mode,attr"`
+	Type       string   `xml:"type,attr"`
+	Managed    string   `xml:"managed,attr"`
+	SrcAddress *DevAddr `xml:"source>address"`
+	DstAddress *DevAddr `xml:"address"`
+}
+
+var devConfig = &hostDevConfig{
+	Mode:    "subsystem",
+	Type:    "pci",
+	Managed: "yes",
+	SrcAddress: &DevAddr{
+		Type:   "pci",
+		Domain: "0x0000",
+	},
+	DstAddress: &DevAddr{
+		Type:   "pci",
+		Domain: "0x0000",
+	},
+}
+
 var hostNetdevCmd = cli.Command{
 	Name:     "hostnetdev",
 	Category: "tools",
 	Aliases:  []string{"hn"},
 	Usage:    "list hostnetdev or add/remove hostdev to/from vm",
-	Action:   listHostDev,
+	Subcommands: []cli.Command{
+		hostNetdevAdd,
+		hostNetdevDel,
+		hostNetdevList,
+	},
+}
+
+var hostNetdevList = cli.Command{
+	Name:      "list",
+	Aliases:   []string{"l"},
+	Usage:     "list hostdev of vm",
+	ArgsUsage: "{vmNamePattern[,vmNamePattern]...}",
+	Action:    listHostDev,
 	Flags: []cli.Flag{
 		cli.BoolFlag{
 			Name:  "verbose,v",
 			Usage: "Display verbose info",
 		},
 		cli.BoolFlag{
-			Name:  "all,a",
-			Usage: "Display all netdev",
+			Name:  "host,t",
+			Usage: "Display host netdev",
 		},
 		cli.StringFlag{
 			Name:  "class,c",
 			Usage: "Display netdev of class, such as 200/280",
-			Value: "280",
 		},
-	},
-	Subcommands: []cli.Command{
-		hostNetdevAdd,
-		hostNetdevDel,
+		cli.BoolFlag{
+			Name:  "regexp,r",
+			Usage: "Use regular expression match",
+		},
 	},
 }
 
@@ -63,7 +108,7 @@ func getDevinfoById(devid string, verbose bool) (string, string) {
 	if err != nil {
 		return "", ""
 	}
-	first := strings.TrimSuffix(string(ob), "\n")
+	first := string(ob)[:23]
 
 	if verbose {
 		cmd = exec.Command("lspci", "-s", devid, "-vv")
@@ -104,84 +149,165 @@ func getDevIdsByClass(vendor, device, class string) []string {
 	return devids
 }
 
-func listHostDevByClass(vendor, device, class string, verbose bool) {
-	devids := getDevIdsByClass(vendor, device, class)
-	for _, devid := range devids {
-		devline, devinfo := getDevinfoById(devid, verbose)
-		if devinfo != "" {
-			devinfo = "\n" + devinfo
-		}
-
-		netdev := getNetdevById(devid)
-		if netdev == "" {
-			fmt.Println(devline + devinfo)
-			continue
-		}
-
-		driver := getDriverById(devid)
-		if driver == "" {
-			fmt.Println(devline + " " + netdev + devinfo)
-			continue
-		}
-
-		fmt.Println(devline + " " + netdev + " " + driver + devinfo)
+func getIpOfNetdev(name string) string {
+	inf, err := net.InterfaceByName(name)
+	if err != nil {
+		return ""
 	}
+	addrs, err := inf.Addrs()
+	if err != nil {
+		return ""
+	}
+	if len(addrs) < 1 {
+		return ""
+	}
+	ipnet, ok := addrs[0].(*net.IPNet)
+	if !ok {
+		return ""
+	}
+	return ipnet.IP.String()
+}
+func listHostDevById(devid string, verbose bool) string {
+	devline, devinfo := getDevinfoById(devid, verbose)
+	if devline == "" {
+		return ""
+	}
+
+	if devinfo != "" {
+		devinfo = "\n" + devinfo
+	}
+
+	driver := getDriverById(devid)
+	if driver == "" {
+		return fmt.Sprintf("%-24s%s\n", devline, devinfo)
+	}
+
+	netdev := getNetdevById(devid)
+	if netdev == "" {
+		return fmt.Sprintf("%-24s%-12s%s\n", devline, driver, devinfo)
+	}
+	ip := getIpOfNetdev(netdev)
+	if ip == "" {
+		return fmt.Sprintf("%-24s%-12s%-8s%s\n", devline, driver, netdev, devinfo)
+	}
+	return fmt.Sprintf("%-24s%-12s%-8s/%-8s%s\n", devline, driver, netdev, ip, devinfo)
+}
+
+func listHostDevByClass(vendor, device, class string, verbose bool) string {
+	devids := getDevIdsByClass(vendor, device, class)
+	o := ""
+	for _, devid := range devids {
+		o += listHostDevById(devid, verbose)
+	}
+	return o
+}
+
+func getHostDevConfig(vm virtMachine) []*hostDevConfig {
+	devCofnigs := make([]*hostDevConfig, 0)
+	dom, err := virtConn.LookupDomainByName(vm.name)
+	if err != nil {
+		fmt.Println(err)
+		return nil
+	}
+
+	domXml, err := dom.GetXMLDesc(0)
+	if err != nil {
+		fmt.Println(err)
+		return nil
+	}
+
+	config := ""
+	for scanner := bufio.NewScanner(strings.NewReader(domXml)); scanner.Scan(); {
+		line := strings.TrimSpace(scanner.Text())
+		if strings.HasPrefix(line, "<hostdev mode='subsystem'") {
+			if config != "" {
+				fmt.Println("error: parse vm config")
+				dom.Free()
+				return nil
+			}
+			config = line + "\n"
+		} else {
+			if config != "" {
+				config += line + "\n"
+			}
+			if line == "</hostdev>" {
+				v := new(hostDevConfig)
+				err := xml.Unmarshal([]byte(config), v)
+				if err != nil {
+					fmt.Println(err)
+					dom.Free()
+					return nil
+				}
+				devCofnigs = append(devCofnigs, v)
+				config = ""
+			}
+		}
+	}
+
+	dom.Free()
+	return devCofnigs
 }
 
 func listHostDev(c *cli.Context) {
 	verbose := c.Bool("verbose")
-	all := c.Bool("all")
-	classes := strings.Split(c.String("class"), ",")
-	if all {
-		classes = []string{
+	host := c.Bool("host")
+	if host {
+		classes := []string{
 			"280", "200", "201",
 		}
+		if c.String("class") != "" {
+			classes = strings.Split(c.String("class"), ",")
+		}
+		vendor := c.Args().Get(0)
+		device := c.Args().Get(1)
+		for _, class := range classes {
+			o := listHostDevByClass(vendor, device, class, verbose)
+			if o != "" {
+				fmt.Print(o)
+			}
+		}
+		return
 	}
-	for _, class := range classes {
-		listHostDevByClass("", "", class, verbose)
+
+	method := 0
+	if c.Bool("regexp") {
+		method = 1
 	}
-}
 
-type DevAddr struct {
-	XMLName       xml.Name `xml:"address"`
-	Type          string   `xml:"type,attr"`
-	Domain        string   `xml:"domain,attr,omitempty"`
-	Bus           string   `xml:"bus,attr,omitempty"`
-	Slot          string   `xml:"slot,attr,omitempty"`
-	Function      string   `xml:"function,attr,omitempty"`
-	multifunction string   `xml:"function,attr,omitempty"`
-}
+	vms := make([]virtMachine, 0)
+	if c.NArg() == 0 {
+		vms = getVms(nil, method)
+	}
+	for i := 0; i < c.NArg(); i++ {
+		vms = append(vms, getVms([]string{c.Args().Get(i)}, method)...)
+	}
 
-type hostDevConfig struct {
-	XMLName    xml.Name `xml:"hostdev"`
-	Mode       string   `xml:"mode,attr"`
-	Type       string   `xml:"type,attr"`
-	Managed    string   `xml:"managed,attr"`
-	SrcAddress *DevAddr `xml:"source>address"`
-	DstAddress *DevAddr `xml:"address"`
-}
-
-var devConfig = &hostDevConfig{
-	Mode:    "subsystem",
-	Type:    "pci",
-	Managed: "yes",
-	SrcAddress: &DevAddr{
-		Type:   "pci",
-		Domain: "0x0000",
-	},
-	DstAddress: &DevAddr{
-		Type:   "pci",
-		Domain: "0x0000",
-	},
+	for _, vm := range vms {
+		hostdevConfigs := getHostDevConfig(vm)
+		vmName := vm.name
+		for _, c := range hostdevConfigs {
+			o := listHostDevById(c.SrcAddress.Bus[2:]+":"+c.SrcAddress.Slot[2:]+"."+
+				c.SrcAddress.Function[2:], verbose)
+			if o != "" {
+				if vmName != "" {
+					fmt.Println("vm " + vmName + ":")
+					vmName = ""
+				}
+				fmt.Print(o)
+			}
+		}
+	}
 }
 
 var hostNetdevAdd = cli.Command{
-	Name:  "add",
-	Usage: "add hostdev to vm",
+	Name:      "add",
+	Usage:     "add hostdev to vm",
+	ArgsUsage: "{device id} {vmNamePattern}",
+	Aliases:   []string{"a"},
 	Flags: []cli.Flag{
 		cli.BoolFlag{
 			Name:  "regexp,r",
-			Usage: "Use regular expression match",
+			Usage: "Use regular expression match{match first}",
 		},
 	},
 	Before: func(c *cli.Context) error {
@@ -290,21 +416,19 @@ func addHostDev(c *cli.Context) {
 }
 
 var hostNetdevDel = cli.Command{
-	Name:  "del",
-	Usage: "del hostdev from vm",
-	Flags: []cli.Flag{
-		cli.BoolFlag{
-			Name:  "regexp,r",
-			Usage: "Use regular expression match",
-		},
-	},
+	Name:      "del",
+	Usage:     "del hostdev from vm",
+	ArgsUsage: "{device id[,device id]...}",
+	Aliases:   []string{"d"},
 	Before: func(c *cli.Context) error {
-		if c.NArg() < 2 {
+		if c.NArg() < 1 {
 			return fmt.Errorf("invalid parameters")
 		}
-		devid := c.Args().First()
-		if strings.Index(devid, ":") != 2 || strings.Index(devid, ".") != 5 {
-			return fmt.Errorf("invalid parameters")
+		for i := 0; i < c.NArg(); i++ {
+			devid := c.Args().Get(i)
+			if strings.Index(devid, ":") != 2 || strings.Index(devid, ".") != 5 {
+				return fmt.Errorf("invalid parameters")
+			}
 		}
 		return nil
 	},
@@ -312,43 +436,32 @@ var hostNetdevDel = cli.Command{
 }
 
 func delHostDev(c *cli.Context) {
-	devid := c.Args().First()
-	devConfig.SrcAddress.Bus = "0x" + devid[:strings.Index(devid, ":")]
-	devConfig.SrcAddress.Slot = "0x" + devid[strings.Index(devid, ":")+1:strings.Index(devid, ".")]
-	devConfig.SrcAddress.Function = "0x" + devid[strings.Index(devid, ".")+1:]
-	v, err := xml.MarshalIndent(devConfig, "", "  ")
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	devConfigXml := string(v)
-
-	method := 0
-	if c.Bool("regexp") {
-		method = 1
-	}
-
-	vmName := c.Args().Get(1)
-
-	virtMachines := getVms(nil, method)
-	for _, vm := range virtMachines {
-		matched := matchName(vm.name, []string{vmName}, method)
-		if !matched {
-			continue
-		}
-
-		dom, err := virtConn.LookupDomainByName(vmName)
+	for i := 0; i < c.NArg(); i++ {
+		devid := c.Args().Get(i)
+		devConfig.SrcAddress.Bus = "0x" + devid[:strings.Index(devid, ":")]
+		devConfig.SrcAddress.Slot = "0x" + devid[strings.Index(devid, ":")+1:strings.Index(devid, ".")]
+		devConfig.SrcAddress.Function = "0x" + devid[strings.Index(devid, ".")+1:]
+		v, err := xml.MarshalIndent(devConfig, "", "  ")
 		if err != nil {
 			fmt.Println(err)
 			return
 		}
+		devConfigXml := string(v)
 
-		err = dom.DetachDevice(devConfigXml)
-		if err != nil {
-			fmt.Println(err)
-			return
+		virtMachines := getVms(nil, 0)
+		for _, vm := range virtMachines {
+			dom, err := virtConn.LookupDomainByName(vm.name)
+			if err != nil {
+				fmt.Println(err)
+				return
+			}
+
+			err = dom.DetachDevice(devConfigXml)
+			dom.Free()
+			if err == nil {
+				fmt.Printf("%s dettach %s\n", vm.name, devid)
+				break
+			}
 		}
-		dom.Free()
-		break
 	}
 }
