@@ -13,7 +13,7 @@ func main() {
 	app := cli.NewApp()
 	app.Name = "vmmgt"
 	app.Usage = "Manage virtual machines"
-	app.Version = "v0.8"
+	app.Version = "v0.9"
 	app.Authors = []cli.Author{
 		cli.Author{
 			Name:  "wangdb",
