@@ -61,9 +61,10 @@ func sshVm(c *cli.Context) {
 }
 
 var cpCmd = cli.Command{
-	Name:     "cp",
-	Category: "tools",
-	Usage:    "scp file/dir to/from virtual machine",
+	Name:      "cp",
+	Category:  "tools",
+	Usage:     "scp file/dir to/from virtual machine",
+	ArgsUsage: "[vmName:]/path [vmName:]/path",
 	Before: func(c *cli.Context) error {
 		if c.NArg() < 2 {
 			return fmt.Errorf("invalid parameters")

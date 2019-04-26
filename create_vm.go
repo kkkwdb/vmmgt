@@ -11,11 +11,12 @@ import (
 )
 
 var createCmd = cli.Command{
-	Name:    "create",
-	Aliases: []string{"c"},
-	Usage:   "create a virtual machine",
-	Before:  createCheck,
-	Action:  createVm,
+	Name:      "create",
+	Aliases:   []string{"c"},
+	Usage:     "create a virtual machine",
+	ArgsUsage: "{vmName} {vmName} ...",
+	Before:    createCheck,
+	Action:    createVm,
 	Flags: []cli.Flag{
 		cli.StringSliceFlag{
 			Name:  "name,n",
@@ -116,6 +117,7 @@ func getDiskHome() string {
 
 func getCmdPara(c *cli.Context, name string, macTail uint64) ([]string, string) {
 	cmdPara := make(map[string]string)
+	netCmdPara := make(map[string]string)
 
 	netNum := c.Int("netnum")
 	diskhome := getDiskHome()
@@ -187,10 +189,10 @@ func getCmdPara(c *cli.Context, name string, macTail uint64) ([]string, string) 
 	}
 
 	if netNum == 2 {
-		cmdPara["--network1"] = "network=mgt-net,model=virtio" + mac1
-		cmdPara["--network2"] = "network=data-net,model=virtio" + mac2
+		netCmdPara["--network1"] = "network=mgt-net,model=virtio" + mac1
+		netCmdPara["--network2"] = "network=data-net,model=virtio" + mac2
 	} else if netNum == 1 {
-		cmdPara["--network"] = "network=default,model=virtio" + mac1
+		netCmdPara["--network"] = "network=default,model=virtio" + mac1
 	} else {
 		return nil, ""
 	}
@@ -203,6 +205,16 @@ func getCmdPara(c *cli.Context, name string, macTail uint64) ([]string, string) 
 		parameters = append(parameters, k)
 		if v != "" {
 			parameters = append(parameters, v)
+		}
+	}
+	if netCmdPara["--network"] != "" {
+		parameters = append(parameters, "--network", netCmdPara["--network"])
+	} else {
+		if netCmdPara["--network1"] != "" {
+			parameters = append(parameters, "--network", netCmdPara["--network1"])
+		}
+		if netCmdPara["--network2"] != "" {
+			parameters = append(parameters, "--network", netCmdPara["--network2"])
 		}
 	}
 	return parameters, diskpath
