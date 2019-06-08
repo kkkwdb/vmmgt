@@ -15,7 +15,7 @@ func getVer() string {
 	if err != nil {
 		return ""
 	}
-	return string(ver)
+	return string(ver[:len(ver)-1])
 }
 
 func main() {
