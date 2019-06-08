@@ -51,19 +51,19 @@ var devConfig = &hostDevConfig{
 	},
 }
 
-var hostNetdevCmd = cli.Command{
-	Name:     "hostnetdev",
+var hostDevCmd = cli.Command{
+	Name:     "hostdev",
 	Category: "tools",
 	Aliases:  []string{"hn"},
-	Usage:    "list hostnetdev or attach/detach hostdev to/from vm",
+	Usage:    "list hostdev or attach/detach hostdev to/from vm",
 	Subcommands: []cli.Command{
-		hostNetdevAdd,
-		hostNetdevDel,
-		hostNetdevList,
+		hostDevAdd,
+		hostDevDel,
+		hostDevList,
 	},
 }
 
-var hostNetdevList = cli.Command{
+var hostDevList = cli.Command{
 	Name:        "list",
 	Aliases:     []string{"l"},
 	Usage:       "list hostdev",
@@ -77,11 +77,11 @@ var hostNetdevList = cli.Command{
 		},
 		cli.BoolFlag{
 			Name:  "host,t",
-			Usage: "Display host netdev",
+			Usage: "Display host hostdev",
 		},
 		cli.StringFlag{
 			Name:  "class,c",
-			Usage: "Display netdev of class, such as 200/280",
+			Usage: "Display hostdev of class, such as 200/280",
 		},
 		cli.BoolFlag{
 			Name:  "regexp,r",
@@ -320,7 +320,7 @@ func listHostDev(c *cli.Context) {
 	}
 }
 
-var hostNetdevAdd = cli.Command{
+var hostDevAdd = cli.Command{
 	Name:      "attach",
 	Usage:     "attach hostdev to vm",
 	ArgsUsage: "{device id} {vmNamePattern}",
@@ -436,7 +436,7 @@ func attachHostDev(c *cli.Context) {
 	}
 }
 
-var hostNetdevDel = cli.Command{
+var hostDevDel = cli.Command{
 	Name:      "detach",
 	Usage:     "detach hostdev from vm",
 	ArgsUsage: "{device id[,device id]...}",

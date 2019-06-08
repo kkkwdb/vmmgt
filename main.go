@@ -5,15 +5,24 @@ import (
 	"github.com/urfave/cli"
 	"log"
 	"os"
+	"os/exec"
 )
 
 var virtConn *libvirt.Connect
 
+func getVer() string {
+	ver, err := exec.Command("git", "describe", "--tags", "--dirty").Output()
+	if err != nil {
+		return ""
+	}
+	return string(ver)
+}
+
 func main() {
 	app := cli.NewApp()
 	app.Name = "vmmgt"
+	app.Version = getVer()
 	app.Usage = "Manage virtual machines"
-	app.Version = "v0.9"
 	app.Authors = []cli.Author{
 		cli.Author{
 			Name:  "wangdb",
@@ -50,7 +59,7 @@ func main() {
 		sshCmd,
 		cpCmd,
 		dnatCmd,
-		hostNetdevCmd,
+		hostDevCmd,
 	}
 
 	if err := app.Run(os.Args); err != nil {

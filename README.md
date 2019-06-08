@@ -5,13 +5,15 @@ A tool to manage virtual machines, including create/delete/list tools.
 libvirt-devel virt-install
 
 ## install
-mkdir -p ~/go/src/github.com/kkkwdb/  
-cd ~/go/src/github.com/kkkwdb/  
-git clone https://github.com/kkkwdb/vmmgt.git  
+```
+mkdir -p ~/go/src/10.0.24.42/wangdb/  
+cd ~/go/src/10.0.24.42/wangdb/  
+git clone http://10.0.24.42/wangdb/vmmgt.git  
 cd vmmgt  
 git submodule init  
 git submodule update  
 go build  
+```
 
 ## help
 ./vmmgt -h

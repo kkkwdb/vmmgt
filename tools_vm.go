@@ -9,12 +9,13 @@ import (
 )
 
 var sshCmd = cli.Command{
-	Name:     "ssh",
-	Category: "tools",
-	Aliases:  []string{"s"},
-	Usage:    "ssh to virtual machine",
-	Before:   checkArgs,
-	Action:   sshVm,
+	Name:      "ssh",
+	Category:  "tools",
+	Aliases:   []string{"s"},
+	Usage:     "ssh to virtual machine",
+	ArgsUsage: "vmName",
+	Before:    checkArgs,
+	Action:    sshVm,
 	Flags: []cli.Flag{
 		cli.BoolFlag{
 			Name:  "regexp,r",

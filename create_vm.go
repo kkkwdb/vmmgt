@@ -33,12 +33,12 @@ var createCmd = cli.Command{
 		},
 		cli.StringFlag{
 			Name:  "memory,m",
-			Usage: "memory for vm",
+			Usage: "memory size(MB) for vm",
 			Value: "8192",
 		},
 		cli.StringFlag{
 			Name:  "disk,d",
-			Usage: "disk capability for vm",
+			Usage: "disk capability(GB) for vm",
 			Value: "100",
 		},
 		cli.IntFlag{

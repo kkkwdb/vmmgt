@@ -32,10 +32,11 @@ var stateTable = []string{
 }
 
 var listCmd = cli.Command{
-	Name:    "list",
-	Aliases: []string{"l"},
-	Usage:   "list virtual machines",
-	Action:  listVm,
+	Name:      "list",
+	Aliases:   []string{"l"},
+	Usage:     "list virtual machines",
+	ArgsUsage: "vm1[ vm2]...",
+	Action:    listVm,
 	Flags: []cli.Flag{
 		cli.BoolFlag{
 			Name:  "verbose,v",
