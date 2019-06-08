@@ -6,9 +6,9 @@ libvirt-devel virt-install
 
 ## install
 ```
-mkdir -p ~/go/src/10.0.24.42/wangdb/  
-cd ~/go/src/10.0.24.42/wangdb/  
-git clone http://10.0.24.42/wangdb/vmmgt.git  
+mkdir -p ~/go/src/10.0.24.42/secawa/  
+cd ~/go/src/10.0.24.42/secawa/  
+git clone http://10.0.24.42/secawa/vmmgt.git  
 cd vmmgt  
 git submodule init  
 git submodule update  
