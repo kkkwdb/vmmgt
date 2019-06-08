@@ -54,7 +54,7 @@ var devConfig = &hostDevConfig{
 var hostDevCmd = cli.Command{
 	Name:     "hostdev",
 	Category: "tools",
-	Aliases:  []string{"hn"},
+	Aliases:  []string{"hd"},
 	Usage:    "list hostdev or attach/detach hostdev to/from vm",
 	Subcommands: []cli.Command{
 		hostDevAdd,
@@ -174,7 +174,7 @@ func getIpOfNetdev(name string) (string, string) {
 	}
 	return ipnet.IP.String(), s
 }
-func listHostDevById(devid string, verbose bool) string {
+func listHostDevById(devid string, dst string, verbose bool) string {
 	devline, devinfo := getDevinfoById(devid, verbose)
 	if devline == "" {
 		return ""
@@ -186,25 +186,25 @@ func listHostDevById(devid string, verbose bool) string {
 
 	driver := getDriverById(devid)
 	if driver == "" {
-		return fmt.Sprintf("%-24s%s\n", devline, devinfo)
+		return fmt.Sprintf("%-24s-> %-24s%s\n", devline, dst, devinfo)
 	}
 
 	netdev := getNetdevById(devid)
 	if netdev == "" {
-		return fmt.Sprintf("%-24s%-12s%s\n", devline, driver, devinfo)
+		return fmt.Sprintf("%-24s-> %-24s%-12s%s\n", devline, dst, driver, devinfo)
 	}
 	ip, s := getIpOfNetdev(netdev)
 	if ip == "" {
-		return fmt.Sprintf("%-24s%-12s%-8s%s\n", devline, driver, netdev, devinfo)
+		return fmt.Sprintf("%-24s-> %-24s%-12s%-8s%s\n", devline, dst, driver, netdev, devinfo)
 	}
-	return fmt.Sprintf("%-24s%-12s%-8s/%-8s/%-6s%s\n", devline, driver, netdev, ip, s, devinfo)
+	return fmt.Sprintf("%-24s-> %-24s%-12s%-8s/%-8s/%-6s%s\n", devline, dst, driver, netdev, ip, s, devinfo)
 }
 
 func listHostDevByClass(vendor, device, class string, verbose bool) string {
 	devids := getDevIdsByClass(vendor, device, class)
 	o := ""
 	for _, devid := range devids {
-		o += listHostDevById(devid, verbose)
+		o += listHostDevById(devid, "", verbose)
 	}
 	return o
 }
@@ -262,11 +262,11 @@ func listHostDev(c *cli.Context) {
 		i := 0
 		devid := c.Args().Get(i)
 		if len(devid) == 7 && devid[2] == ':' && devid[5] == '.' {
-			fmt.Print(listHostDevById(devid, verbose))
+			fmt.Print(listHostDevById(devid, "", verbose))
 			i++
 			for devid = c.Args().Get(i); devid != ""; {
 				if len(devid) == 7 && devid[2] == ':' && devid[5] == '.' {
-					fmt.Print(listHostDevById(devid, verbose))
+					fmt.Print(listHostDevById(devid, "", verbose))
 				}
 				i++
 				devid = c.Args().Get(i)
@@ -307,8 +307,9 @@ func listHostDev(c *cli.Context) {
 		hostdevConfigs := getHostDevConfig(vm)
 		vmName := vm.name
 		for _, c := range hostdevConfigs {
-			o := listHostDevById(c.SrcAddress.Bus[2:]+":"+c.SrcAddress.Slot[2:]+"."+
-				c.SrcAddress.Function[2:], verbose)
+			srcDevid := c.SrcAddress.Bus[2:] + ":" + c.SrcAddress.Slot[2:] + "." + c.SrcAddress.Function[2:]
+			dstDevid := c.DstAddress.Bus[2:] + ":" + c.DstAddress.Slot[2:] + "." + c.DstAddress.Function[2:]
+			o := listHostDevById(srcDevid, dstDevid, verbose)
 			if o != "" {
 				if vmName != "" {
 					fmt.Println("vm " + vmName + ":")
@@ -333,10 +334,6 @@ var hostDevAdd = cli.Command{
 	},
 	Before: func(c *cli.Context) error {
 		if c.NArg() < 2 {
-			return fmt.Errorf("invalid parameters")
-		}
-		devid := c.Args().First()
-		if strings.Index(devid, ":") != 2 || strings.Index(devid, ".") != 5 {
 			return fmt.Errorf("invalid parameters")
 		}
 		return nil
@@ -394,9 +391,35 @@ func getDomAvailPciId(dom *libvirt.Domain) (*DevAddr, error) {
 
 func attachHostDev(c *cli.Context) {
 	devid := c.Args().First()
-	devConfig.SrcAddress.Bus = "0x" + devid[:strings.Index(devid, ":")]
-	devConfig.SrcAddress.Slot = "0x" + devid[strings.Index(devid, ":")+1:strings.Index(devid, ".")]
-	devConfig.SrcAddress.Function = "0x" + devid[strings.Index(devid, ".")+1:]
+	bus := ""
+	slot := ""
+	function := ""
+	if strings.Index(devid, ":") != 2 || strings.Index(devid, ".") != 5 {
+		link, err := os.Readlink("/sys/class/net/" + devid + "/device")
+		if err != nil {
+			fmt.Printf("device id %s is invalid\n", devid)
+			return
+		}
+		devid := strings.Split(link, ":")
+		bus = "0x" + devid[1]
+		slot = "0x" + strings.Split(devid[2], ".")[0]
+		function = "0x" + strings.Split(devid[2], ".")[1]
+		if bus == "0x" || slot == "0x" || function == "0x" {
+			fmt.Printf("device id %s is invalid\n", devid)
+			return
+		}
+	} else {
+		bus = "0x" + devid[:strings.Index(devid, ":")]
+		slot = "0x" + devid[strings.Index(devid, ":")+1:strings.Index(devid, ".")]
+		function = "0x" + devid[strings.Index(devid, ".")+1:]
+		if bus == "0x" || slot == "0x" || function == "0x" {
+			fmt.Printf("device id %s is invalid\n", devid)
+			return
+		}
+	}
+	devConfig.SrcAddress.Bus = bus
+	devConfig.SrcAddress.Slot = slot
+	devConfig.SrcAddress.Function = function
 
 	method := 0
 	if c.Bool("regexp") {
@@ -439,7 +462,7 @@ func attachHostDev(c *cli.Context) {
 var hostDevDel = cli.Command{
 	Name:      "detach",
 	Usage:     "detach hostdev from vm",
-	ArgsUsage: "{device id[,device id]...}",
+	ArgsUsage: "{device_id[ device_id]...}",
 	Aliases:   []string{"d"},
 	Before: func(c *cli.Context) error {
 		if c.NArg() < 1 {
