@@ -31,4 +31,4 @@ go build
 ./vmmgt network list
 
 ## hostnetdev
-./vmmgt hostnetdev list
+./vmmgt hostdev list

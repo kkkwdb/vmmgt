@@ -147,6 +147,8 @@ func getCmdPara(c *cli.Context, name string, macTail uint64) ([]string, string) 
 
 	if install == "pxe" {
 		cmdPara["--pxe"] = ""
+	} else if strings.HasPrefix(install, "http://") {
+		cmdPara["--location"] = install
 	} else if strings.HasSuffix(install, ".iso") {
 		cmdPara["--cdrom"] = install
 	} else {

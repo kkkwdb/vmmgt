@@ -322,10 +322,11 @@ func listHostDev(c *cli.Context) {
 }
 
 var hostDevAdd = cli.Command{
-	Name:      "attach",
-	Usage:     "attach hostdev to vm",
-	ArgsUsage: "{device id} {vmNamePattern}",
-	Aliases:   []string{"a"},
+	Name:        "attach",
+	Aliases:     []string{"a"},
+	Usage:       "attach hostdev to vm",
+	ArgsUsage:   "{host_dev} {vmNamePattern}",
+	Description: "host_dev is {pci_bus:pci_device.pci_fuction} or {netdev}",
 	Flags: []cli.Flag{
 		cli.BoolFlag{
 			Name:  "regexp,r",
@@ -462,7 +463,7 @@ func attachHostDev(c *cli.Context) {
 var hostDevDel = cli.Command{
 	Name:      "detach",
 	Usage:     "detach hostdev from vm",
-	ArgsUsage: "{device_id[ device_id]...}",
+	ArgsUsage: "{host_pci_dev[ host_pci_dev]...}",
 	Aliases:   []string{"d"},
 	Before: func(c *cli.Context) error {
 		if c.NArg() < 1 {
